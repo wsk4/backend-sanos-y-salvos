@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # 1. Base de Datos con soporte espacial para geolocalización
+  postgres-db:
+    image: postgis/postgis:15-3.3
+    container_name: postgres-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: sanosysalvos_mascotas
+    ports:
+      - "5432:5432"
+    networks:
+      - sanos-network
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  # 2. Microservicio Gestión de Mascotas
+  ms-mascotas:
+    build:
+      context: ./sanos-y-salvos-gestion-mascotas
+      dockerfile: Dockerfile
+    container_name: sanos_ms_mascotas
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres-db
+    networks:
+      - sanos-network
+
+  # 3. Microservicio Geolocalización
+  ms-geolocalizacion:
+    build:
+      context: ./sanos-y-salvos-geolocalizacion
+      dockerfile: Dockerfile
+    container_name: sanos_ms_geolocalizacion
+    ports:
+      - "8081:8081"
+    depends_on:
+      - postgres-db
+    networks:
+      - sanos-network
+
+  # 4. Backend For Frontend (BFF) / API Gateway
+  bff-gateway:
+    build:
+      context: ./sanos-y-salvos-bbf-api-gateway
+      dockerfile: Dockerfile
+    container_name: sanos_bff_gateway
+    ports:
+      - "8082:8082"
+    depends_on:
+      - ms-mascotas
+      - ms-geolocalizacion
+    networks:
+      - sanos-network
+
+networks:
+  sanos-network:
+    driver: bridge
+
+volumes:
+  pg_data:
